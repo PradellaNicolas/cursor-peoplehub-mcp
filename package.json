@@ -1,0 +1,29 @@
+{
+  "name": "cursor-peoplehub-mcp",
+  "version": "1.0.0",
+  "description": "MCP Server for PeopleHub Time Report (Accusys)",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/launcher.mjs",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": ["mcp", "peoplehub", "time-report", "accusys", "cursor"],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.9.0",
+    "dotenv": "^16.4.5",
+    "playwright": "^1.51.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "esbuild": "^0.28.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.6.3"
+  }
+}
