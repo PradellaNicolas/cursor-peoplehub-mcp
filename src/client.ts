@@ -102,6 +102,14 @@ export class PeopleHubClient {
     return this.request<T>('POST', apiPath, body);
   }
 
+  async patch<T>(apiPath: string, body: unknown): Promise<ApiResult<T>> {
+    return this.request<T>('PATCH', apiPath, body);
+  }
+
+  async delete<T>(apiPath: string): Promise<ApiResult<T>> {
+    return this.request<T>('DELETE', apiPath);
+  }
+
   reloadStorage(): void {
     this.state = hasStorageState() ? loadStorageState() : null;
   }
@@ -114,13 +122,15 @@ export interface TimeReportRow {
   work_date: string;
   minutos: number;
   horas?: string;
-  actividad_id?: number;
-  subactividad_id?: number;
-  codigo?: number;
+  actividad_id?: number | null;
+  subactividad_id?: number | null;
+  codigo?: number | null;
   cat_otros_conceptos_id?: number;
+  cat_clientes_id?: number | null;
+  descripcion?: string | null;
   grupo_id?: string | null;
   ticket_cau?: string | null;
-  rework_id?: number;
+  rework_id?: number | null;
   estado_sync?: string;
   has_pending_sync?: boolean;
 }
@@ -167,4 +177,8 @@ export interface LogHoursPayload {
 
 export interface CreateTimeReportResponse {
   id: string;
+}
+
+export interface UpdateTimeReportResponse {
+  id?: string;
 }

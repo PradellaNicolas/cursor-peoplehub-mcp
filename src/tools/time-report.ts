@@ -11,12 +11,16 @@ import {
   type CreateTimeReportResponse,
   type GroupRow,
   type ListWeekResponse,
+  type TimeReportRow,
+  type UpdateTimeReportResponse,
 } from '../client.js';
 import {
+  addDays,
   isFutureDate,
   minutesFromHoursAndMinutes,
   parseActivity,
   parseIsoDate,
+  startOfWeekMonday,
   weekRangeForDate,
 } from '../utils/dates.js';
 import { AuthRequiredError, formatErrorForMcp } from '../utils/errors.js';
@@ -53,7 +57,10 @@ async function resolveDefaultConceptoId(): Promise<number | undefined> {
   return horasCal?.sql_server_id ?? res.data.data.find((c) => c.asociado)?.sql_server_id;
 }
 
-async function minutesAlreadyLoggedOnDate(workDate: string): Promise<number> {
+async function minutesAlreadyLoggedOnDate(
+  workDate: string,
+  excludeId?: string,
+): Promise<number> {
   const range = weekRangeForDate(parseIsoDate(workDate));
   const qs = new URLSearchParams({
     date_from: range.dateFrom,
@@ -65,8 +72,87 @@ async function minutesAlreadyLoggedOnDate(workDate: string): Promise<number> {
     return 0;
   }
   return res.data.data
-    .filter((r) => r.work_date === workDate)
+    .filter((r) => r.work_date === workDate && r.id !== excludeId)
     .reduce((sum, r) => sum + (typeof r.minutos === 'number' ? r.minutos : 0), 0);
+}
+
+async function findRowById(id: string, workDate?: string): Promise<TimeReportRow | null> {
+  const ref = workDate ? parseIsoDate(workDate) : new Date();
+  const { dateFrom, dateTo } = weekRangeForDate(ref);
+  const qs = new URLSearchParams({ date_from: dateFrom, date_to: dateTo, limit: '200' });
+  const res = await client.get<ListWeekResponse>(`/api/time-report?${qs}`);
+  if (!res.ok || !res.data?.data) {
+    return null;
+  }
+  const row = res.data.data.find((r) => r.id === id);
+  if (row) {
+    return row;
+  }
+  if (workDate) {
+    return null;
+  }
+  const prevWeek = weekRangeForDate(addDays(startOfWeekMonday(ref), -7));
+  const qsPrev = new URLSearchParams({
+    date_from: prevWeek.dateFrom,
+    date_to: prevWeek.dateTo,
+    limit: '200',
+  });
+  const resPrev = await client.get<ListWeekResponse>(`/api/time-report?${qsPrev}`);
+  return resPrev.data?.data?.find((r) => r.id === id) ?? null;
+}
+
+interface PatchOverrides {
+  cat_otros_conceptos_id?: number;
+  grupo_id?: string;
+  cat_clientes_id?: number | null;
+  descripcion?: string | null;
+  rework_id?: number;
+  ticket_cau?: string;
+}
+
+function buildPatchPayload(
+  row: TimeReportRow,
+  totalMinutes: number,
+  overrides?: PatchOverrides,
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    id: row.id,
+    total_horas: totalMinutes,
+  };
+
+  const conceptoId = overrides?.cat_otros_conceptos_id ?? row.cat_otros_conceptos_id;
+  if (conceptoId !== undefined) {
+    payload.cat_otros_conceptos_id = conceptoId;
+  }
+
+  const grupoId = overrides?.grupo_id?.trim() ?? row.grupo_id?.trim();
+  if (grupoId) {
+    payload.grupo_id = grupoId;
+  }
+
+  if (overrides?.cat_clientes_id !== undefined) {
+    payload.cat_clientes_id = overrides.cat_clientes_id;
+  } else if (row.cat_clientes_id != null && row.actividad_id == null) {
+    payload.cat_clientes_id = row.cat_clientes_id;
+  }
+
+  if (overrides?.descripcion !== undefined) {
+    payload.descripcion = overrides.descripcion;
+  } else if (row.actividad_id == null && row.descripcion != null) {
+    payload.descripcion = row.descripcion;
+  }
+
+  const reworkId = overrides?.rework_id ?? row.rework_id;
+  if (reworkId != null) {
+    payload.rework_id = reworkId;
+  }
+
+  const ticket = overrides?.ticket_cau?.trim() ?? row.ticket_cau?.trim();
+  if (ticket) {
+    payload.ticket_cau = ticket;
+  }
+
+  return payload;
 }
 
 export function registerPeopleHubTools(server: McpServer): void {
@@ -334,6 +420,114 @@ export function registerPeopleHubTools(server: McpServer): void {
           status: res.status,
           id: res.data?.id,
           payload,
+        });
+      } catch (err) {
+        return textResult(formatErrorForMcp(err));
+      }
+    },
+  );
+
+  server.tool(
+    'peoplehub_update_hours',
+    'Actualiza minutos de una carga existente (PATCH /api/time-report). Requiere id de peoplehub_list_week y confirm=true. total_horas en API = minutos.',
+    {
+      id: z.string().uuid().describe('UUID del registro (campo id del listado semanal)'),
+      work_date: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional()
+        .describe('Fecha del registro; ayuda a ubicar la fila en la semana correcta'),
+      hours: z.number().int().min(0).describe('Horas enteras'),
+      minutes: z
+        .number()
+        .int()
+        .refine((m) => [0, 15, 30, 45].includes(m), 'minutes debe ser 0, 15, 30 o 45'),
+      concepto_id: z.number().int().positive().optional().describe('cat_otros_conceptos_id'),
+      grupo_id: z.string().min(1).optional(),
+      cat_clientes_id: z.number().int().min(0).optional(),
+      descripcion: z.string().optional(),
+      rework_id: z.number().int().min(0).optional(),
+      ticket_cau: z.string().optional(),
+      confirm: z.boolean().describe('Debe ser true para ejecutar el PATCH'),
+    },
+    async (args) => {
+      try {
+        if (!args.confirm) {
+          return textResult(
+            'Operación cancelada: confirm debe ser true para actualizar horas en PeopleHub.',
+          );
+        }
+
+        const row = await findRowById(args.id, args.work_date);
+        if (!row) {
+          return textResult(
+            `No se encontró el registro ${args.id}. Pasá work_date o listá la semana con peoplehub_list_week.`,
+          );
+        }
+
+        if (isFutureDate(row.work_date)) {
+          return textResult('No se pueden editar cargas en fechas futuras.');
+        }
+
+        const totalMinutes = minutesFromHoursAndMinutes(args.hours, args.minutes);
+
+        const already = await minutesAlreadyLoggedOnDate(row.work_date, row.id);
+        if (already + totalMinutes > MAX_MINUTES_PER_DAY) {
+          return textResult(
+            `Supera el tope de 24h/día: ya hay ${already} min en ${row.work_date} sin este registro; el nuevo total sería ${totalMinutes} min.`,
+          );
+        }
+
+        const payload = buildPatchPayload(row, totalMinutes, {
+          cat_otros_conceptos_id: args.concepto_id,
+          grupo_id: args.grupo_id,
+          cat_clientes_id: args.cat_clientes_id,
+          descripcion: args.descripcion,
+          rework_id: args.rework_id,
+          ticket_cau: args.ticket_cau,
+        });
+        const res = await client.patch<UpdateTimeReportResponse>('/api/time-report', payload);
+        if (!res.ok) {
+          return textResult(`No se actualizó: ${res.error}`);
+        }
+
+        return jsonResult({
+          ok: true,
+          status: res.status,
+          id: res.data?.id ?? row.id,
+          payload,
+        });
+      } catch (err) {
+        return textResult(formatErrorForMcp(err));
+      }
+    },
+  );
+
+  server.tool(
+    'peoplehub_delete_hours',
+    'Elimina una carga de horas (DELETE /api/time-report?id=). Requiere confirm=true.',
+    {
+      id: z.string().uuid().describe('UUID del registro a borrar'),
+      confirm: z.boolean().describe('Debe ser true para ejecutar el DELETE'),
+    },
+    async (args) => {
+      try {
+        if (!args.confirm) {
+          return textResult(
+            'Operación cancelada: confirm debe ser true para eliminar horas en PeopleHub.',
+          );
+        }
+
+        const qs = new URLSearchParams({ id: args.id });
+        const res = await client.delete<Record<string, unknown>>(`/api/time-report?${qs}`);
+        if (!res.ok) {
+          return textResult(`No se eliminó: ${res.error}`);
+        }
+
+        return jsonResult({
+          ok: true,
+          status: res.status,
+          id: args.id,
         });
       } catch (err) {
         return textResult(formatErrorForMcp(err));

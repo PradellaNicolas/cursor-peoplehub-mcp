@@ -57,6 +57,10 @@ Cada usuario corre su propio `peoplehub_login`. No commitear `.env` ni `storage.
 | `peoplehub_list_groups` | Grupos |
 | `peoplehub_list_reworks` | Reworks por `actividad_id` |
 | `peoplehub_log_hours` | Alta de horas (requiere `confirm: true`) |
+| `peoplehub_update_hours` | Editar minutos de un registro (`id` + `confirm: true`) |
+| `peoplehub_delete_hours` | Borrar registro por `id` (`confirm: true`) |
+
+Detalle PATCH/DELETE: [`docs/api-patch-delete.md`](docs/api-patch-delete.md).
 
 ## Estado local
 
