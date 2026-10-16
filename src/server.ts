@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { registerAttendanceTools } from './tools/attendance.js';
 import { registerPeopleHubTools } from './tools/time-report.js';
 
 const APP_VERSION = process.env.MCP_PEOPLEHUB_APP_VERSION ?? '1.0.0';
@@ -11,6 +12,7 @@ export function createServer(): McpServer {
   });
 
   registerPeopleHubTools(server);
+  registerAttendanceTools(server);
   return server;
 }
 

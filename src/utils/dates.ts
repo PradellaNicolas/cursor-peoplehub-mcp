@@ -34,6 +34,12 @@ export function weekRangeForDate(d: Date): { dateFrom: string; dateTo: string } 
   return { dateFrom: formatIsoDate(start), dateTo: formatIsoDate(end) };
 }
 
+export function monthRangeForDate(d: Date): { dateFrom: string; dateTo: string } {
+  const start = new Date(d.getFullYear(), d.getMonth(), 1);
+  const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  return { dateFrom: formatIsoDate(start), dateTo: formatIsoDate(end) };
+}
+
 export function todayIso(): string {
   return formatIsoDate(new Date());
 }

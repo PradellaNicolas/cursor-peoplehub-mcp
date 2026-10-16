@@ -1,6 +1,6 @@
 # cursor-peoplehub-mcp
 
-MCP (stdio) para consultar y cargar horas en [PeopleHub](https://peoplehub.accusystechnology.com/time-report) de Accusys vía `/api/time-report`.
+MCP (stdio) para consultar y cargar horas en [PeopleHub](https://peoplehub.accusystechnology.com/time-report) de Accusys vía `/api/time-report`, y leer [Mi calendario](https://peoplehub.accusystechnology.com/asistencia?tab=calendario) vía `/api/attendance/me`.
 
 Repositorio: [github.com/PradellaNicolas/cursor-peoplehub-mcp](https://github.com/PradellaNicolas/cursor-peoplehub-mcp)
 
@@ -41,7 +41,7 @@ Ajustá la ruta al clone local (mismo patrón que [cursor-workflow-hints-mcp](ht
 2. Se abre Chromium: **Continuar con Microsoft** (MFA si aplica).
 3. Al llegar a Time Report, la sesión queda en `%USERPROFILE%\.peoplehub-mcp\storage.json`.
 4. **`peoplehub_session`** para verificar.
-5. **`peoplehub_list_week`** / **`peoplehub_log_hours`** (con `confirm: true`).
+5. **`peoplehub_list_week`** / **`peoplehub_list_calendar`** / **`peoplehub_log_hours`** (con `confirm: true`).
 
 Cada usuario corre su propio `peoplehub_login`. No commitear `.env` ni `storage.json`.
 
@@ -51,7 +51,8 @@ Cada usuario corre su propio `peoplehub_login`. No commitear `.env` ni `storage.
 |------|-------------|
 | `peoplehub_login` | SSO Microsoft → guarda sesión local |
 | `peoplehub_session` | Estado de sesión |
-| `peoplehub_list_week` | Cargas de la semana |
+| `peoplehub_list_week` | Cargas de la semana (Time Report / declaración) |
+| `peoplehub_list_calendar` | Mi calendario de asistencia (`GET /api/attendance/me?from=&to=`) |
 | `peoplehub_list_activities` | Catálogo actividades |
 | `peoplehub_list_conceptos` | Conceptos asociados |
 | `peoplehub_list_groups` | Grupos |
@@ -60,7 +61,7 @@ Cada usuario corre su propio `peoplehub_login`. No commitear `.env` ni `storage.
 | `peoplehub_update_hours` | Editar minutos de un registro (`id` + `confirm: true`) |
 | `peoplehub_delete_hours` | Borrar registro por `id` (`confirm: true`) |
 
-Detalle PATCH/DELETE: [`docs/api-patch-delete.md`](docs/api-patch-delete.md).
+Detalle PATCH/DELETE: [`docs/api-patch-delete.md`](docs/api-patch-delete.md). Calendario (solo lectura): [`docs/api-attendance.md`](docs/api-attendance.md).
 
 ## Estado local
 
