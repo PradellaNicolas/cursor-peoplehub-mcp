@@ -158,7 +158,7 @@ function buildPatchPayload(
 export function registerPeopleHubTools(server: McpServer): void {
   server.tool(
     'peoplehub_login',
-    'Abre Chromium para iniciar sesión con Microsoft SSO en PeopleHub y guarda la sesión localmente (~/.peoplehub-mcp/storage.json). Ejecutar una vez por usuario o cuando expire la sesión.',
+    'Abre o reutiliza un Microsoft Edge con perfil aparte (~/.peoplehub-mcp/edge-profile) para SSO de PeopleHub, copia cookies a storage.json y no cierra tu Edge cotidiano. La primera vez: Continuar con Microsoft en esa ventana. No lee tu contraseña ni el perfil Default.',
     {
       timeout_seconds: z
         .number()

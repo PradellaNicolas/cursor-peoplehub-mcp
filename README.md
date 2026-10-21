@@ -9,7 +9,7 @@ Nombre del servidor en Cursor: **peoplehub**.
 ## Requisitos
 
 - Node.js 20+
-- Chromium de Playwright (solo para `peoplehub_login`)
+- **Microsoft Edge** instalado (Windows)
 - Cursor con MCP habilitado
 
 ## Instalación
@@ -18,11 +18,12 @@ Nombre del servidor en Cursor: **peoplehub**.
 git clone https://github.com/PradellaNicolas/cursor-peoplehub-mcp.git
 cd cursor-peoplehub-mcp
 npm ci
-npx playwright install chromium
 npm run build
 ```
 
-Opcional: copiar `.env.example` a `.env` si necesitás cambiar `PEOPLEHUB_BASE_URL`.
+`peoplehub_login` abre un **Edge con perfil aparte** (`~/.peoplehub-mcp/edge-profile`). No lee tu Edge cotidiano ni tu contraseña. Si ya hay CDP en 9222, se conecta a esa ventana.
+
+Opcional: copiar `.env.example` a `.env` para `PEOPLEHUB_BASE_URL`, `PEOPLEHUB_CDP_URL` o `PEOPLEHUB_EDGE_PROFILE_DIR`.
 
 ## Cursor (`~/.cursor/mcp.json`)
 
@@ -37,19 +38,18 @@ Ajustá la ruta al clone local (mismo patrón que [cursor-workflow-hints-mcp](ht
 
 ## Primer uso
 
-1. Ejecutá **`peoplehub_login`** desde el agente.
-2. Se abre Chromium: **Continuar con Microsoft** (MFA si aplica).
-3. Al llegar a Time Report, la sesión queda en `%USERPROFILE%\.peoplehub-mcp\storage.json`.
-4. **`peoplehub_session`** para verificar.
-5. **`peoplehub_list_week`** / **`peoplehub_list_calendar`** / **`peoplehub_log_hours`** (con `confirm: true`).
+1. Ejecutá **`peoplehub_login`** (podés dejar abierto tu Edge habitual).
+2. Se abre una **ventana Edge de PeopleHub** (perfil aparte). Primera vez: **Continuar con Microsoft** (MFA si aplica) hasta Time Report. Después suele alcanzar un clic.
+3. Las cookies quedan en `%USERPROFILE%\.peoplehub-mcp\storage.json`. No commitear `storage.json` ni `edge-profile/`.
+4. **`peoplehub_session`** / **`peoplehub_list_week`** / **`peoplehub_list_calendar`** / **`peoplehub_log_hours`** (con `confirm: true`).
 
-Cada usuario corre su propio `peoplehub_login`. No commitear `.env` ni `storage.json`.
+Cada usuario corre su propio `peoplehub_login`.
 
 ## MCP tools
 
 | Tool | Descripción |
 |------|-------------|
-| `peoplehub_login` | SSO Microsoft → guarda sesión local |
+| `peoplehub_login` | Edge perfil aparte (o CDP) → copia sesión a `storage.json` |
 | `peoplehub_session` | Estado de sesión |
 | `peoplehub_list_week` | Cargas de la semana (Time Report / declaración) |
 | `peoplehub_list_calendar` | Mi calendario de asistencia (`GET /api/attendance/me?from=&to=`) |
@@ -69,11 +69,12 @@ Detalle PATCH/DELETE: [`docs/api-patch-delete.md`](docs/api-patch-delete.md). Ca
 
 - `storage.json` — cookies de sesión (Playwright storage state)
 - `meta.json` — metadata Supabase para refresh (si aplica)
+- `edge-profile/` — perfil Edge sidecar (SSO persistente; no es tu perfil Default)
 
 ## Seguridad
 
 - Auth por cookies Supabase/Azure; refresh automático cuando hay `meta.json` con anon key.
-- Si expira la sesión: volver a `peoplehub_login`.
+- Si expira la sesión: `peoplehub_login` (ventana sidecar; SSO / un clic).
 - `peoplehub_log_hours` no envía nada sin `confirm: true`.
 
 ## Build

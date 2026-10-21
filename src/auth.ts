@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { chromium, type BrowserContext } from 'playwright';
+import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import { getConfig } from './config.js';
 
 export interface StorageMeta {
@@ -137,32 +137,102 @@ async function extractAnonKeyFromPage(page: import('playwright').Page): Promise<
   return undefined;
 }
 
-export async function runInteractiveLogin(timeoutMs = 300_000): Promise<{ ok: boolean; message: string }> {
-  const { baseUrl, storagePath, dataDir } = getConfig();
-  ensureDataDir(dataDir);
-
-  const browser = await chromium.launch({ headless: false });
-  let context: BrowserContext | null = null;
+function cdpPort(cdpUrl: string): string {
   try {
-    context = await browser.newContext();
-    const page = await context.newPage();
-    await page.goto(`${baseUrl}/time-report`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    return new URL(cdpUrl).port || '9222';
+  } catch {
+    return '9222';
+  }
+}
 
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-      const url = page.url();
-      if (url.includes('/time-report') && !url.includes('/login')) {
-        await page.waitForTimeout(1500);
-        break;
+function profileLockedMessage(detail: string): string {
+  return (
+    'El perfil Edge de PeopleHub está en uso (otra ventana sidecar abierta). ' +
+    'Cerrá esa ventana de PeopleHub y volvé a ejecutar peoplehub_login. ' +
+    `Detalle: ${detail}`
+  );
+}
+
+function isPeopleHubTimeReport(url: string): boolean {
+  return url.includes('/time-report') && !url.includes('/login');
+}
+
+async function waitForTimeReport(page: Page, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (isPeopleHubTimeReport(page.url())) {
+      await page.waitForTimeout(1500);
+      return true;
+    }
+    await page.waitForTimeout(1000);
+  }
+  return isPeopleHubTimeReport(page.url());
+}
+
+export async function runInteractiveLogin(timeoutMs = 300_000): Promise<{ ok: boolean; message: string }> {
+  const { baseUrl, storagePath, dataDir, cdpUrl, edgeProfileDir } = getConfig();
+  ensureDataDir(dataDir);
+  fs.mkdirSync(edgeProfileDir, { recursive: true });
+
+  let browser: Browser | null = null;
+  let persistent: BrowserContext | null = null;
+  let mode: 'cdp' | 'persistent' = 'cdp';
+  let closePersistent = false;
+
+  try {
+    try {
+      browser = await chromium.connectOverCDP(cdpUrl);
+      mode = 'cdp';
+    } catch {
+      try {
+        persistent = await chromium.launchPersistentContext(edgeProfileDir, {
+          channel: 'msedge',
+          headless: false,
+          args: [`--remote-debugging-port=${cdpPort(cdpUrl)}`],
+        });
+        mode = 'persistent';
+      } catch (launchErr) {
+        const detail = launchErr instanceof Error ? launchErr.message : String(launchErr);
+        if (/lock|user data dir|already in use|Singleton/i.test(detail)) {
+          return { ok: false, message: profileLockedMessage(detail) };
+        }
+        return {
+          ok: false,
+          message:
+            'No se pudo abrir el Edge de PeopleHub (perfil aparte; no toca tu Edge cotidiano). ' +
+            detail,
+        };
       }
-      await page.waitForTimeout(1000);
     }
 
-    if (!page.url().includes('/time-report') || page.url().includes('/login')) {
+    const context: BrowserContext | undefined =
+      mode === 'cdp' ? browser?.contexts()[0] : (persistent ?? undefined);
+    if (!context) {
       return {
         ok: false,
         message:
-          'No se completó el login a tiempo. Abrí el navegador, iniciá sesión con Microsoft y volvé a ejecutar peoplehub_login.',
+          'No hay contexto de Edge para PeopleHub. Volvé a ejecutar peoplehub_login (se abre una ventana de perfil aparte).',
+      };
+    }
+
+    const pages = context.pages();
+    const host = new URL(baseUrl).hostname;
+    let page =
+      pages.find((p) => p.url().includes(host)) ??
+      pages.find((p) => isPeopleHubTimeReport(p.url())) ??
+      pages[0] ??
+      (await context.newPage());
+
+    if (!isPeopleHubTimeReport(page.url())) {
+      await page.goto(`${baseUrl}/time-report`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    }
+
+    const loggedIn = await waitForTimeReport(page, timeoutMs);
+    if (!loggedIn) {
+      return {
+        ok: false,
+        message:
+          'La ventana Edge de PeopleHub está abierta. Completá Continuar con Microsoft (MFA si pide) hasta Time Report y volvé a ejecutar peoplehub_login. No hace falta cerrar tu Edge cotidiano.',
       };
     }
 
@@ -175,13 +245,21 @@ export async function runInteractiveLogin(timeoutMs = 300_000): Promise<{ ok: bo
       supabaseAnonKey: anonKey,
     });
 
+    closePersistent = mode === 'persistent';
+    const origin =
+      mode === 'cdp'
+        ? `Edge vía CDP (${cdpUrl})`
+        : 'Edge de PeopleHub (perfil aparte)';
     return {
       ok: true,
-      message: `Sesión guardada en ${storagePath}. Ya podés usar peoplehub_list_week y peoplehub_log_hours.`,
+      message: `Sesión copiada desde ${origin} a ${storagePath}.`,
     };
   } finally {
-    await context?.close().catch(() => undefined);
-    await browser.close().catch(() => undefined);
+    if (mode === 'cdp') {
+      browser?.disconnect();
+    } else if (closePersistent) {
+      await persistent?.close().catch(() => undefined);
+    }
   }
 }
 
