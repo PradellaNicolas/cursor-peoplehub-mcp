@@ -1,0 +1,37 @@
+# Perfil Time Report Pampa — copiar a:
+#   %USERPROFILE%\.pampa-timereport.yaml
+# Completar actividad_id de tu célula (número AST en PeopleHub).
+
+nombre: ""  # opcional, para mensajes del agente
+
+reminder_time: "18:00"  # hora de recordatorio (ART), referencia para uso manual o Automation
+timezone: America/Argentina/Buenos_Aires
+target_minutes: 480  # 8 horas
+
+count_only_actividad_id: true  # true = solo filas con actividad_id cuentan para las 8 h
+ok_message_when_full: true     # false = no avisar cuando ya hay 8 h
+
+ast_principal:
+  actividad_id: 0  # OBLIGATORIO: ID de actividad / AST de tu célula (ej. 122760)
+  label: ""        # opcional: descripción corta (ej. BM - MANTENIMIENTO PAMPA - ...)
+
+# Si solo tenés una célula, dejar ast_secundario en null
+ast_secundario: null  # o número actividad_id del segundo AST
+
+# Solo si ast_secundario tiene valor:
+#   todo_principal   = todo el faltante va al AST principal
+#   mitad_mitad      = repartir faltante 50/50 entre ambos
+#   preguntar_siempre = el agente pregunta cómo repartir cada vez
+reparto_dos_ast: todo_principal
+
+# Conceptos Time Report según Mi calendario (peoplehub_list_calendar)
+concepto_oficina_id: 19  # Horas Calendario — día con reserva de oficina
+concepto_remoto_id: 85   # Hs Trabajo Remoto — día hábil sin oficina
+concepto_id: 19          # fallback si el calendario no responde
+grupo_id: "ACCUSYS GESTION COBIS"
+subactividad_id: 1
+codigo: 1
+rework_id: 0
+
+# Alternativa a actividad_id en log_hours (formato PeopleHub):
+# activity: "122760-1-1"

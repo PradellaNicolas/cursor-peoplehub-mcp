@@ -4,6 +4,8 @@ MCP (stdio) para consultar y cargar horas en [PeopleHub](https://peoplehub.accus
 
 Repositorio: [github.com/PradellaNicolas/cursor-peoplehub-mcp](https://github.com/PradellaNicolas/cursor-peoplehub-mcp)
 
+**Equipo Pampa (Time Report + skill):** [docs/INSTALACION-PAMPA.md](docs/INSTALACION-PAMPA.md) en la rama `feat/peoplehub-list-calendar`.
+
 Nombre del servidor en Cursor: **peoplehub**.
 
 ## Requisitos
@@ -15,11 +17,14 @@ Nombre del servidor en Cursor: **peoplehub**.
 ## Instalación
 
 ```powershell
-git clone https://github.com/PradellaNicolas/cursor-peoplehub-mcp.git
+git clone -b feat/peoplehub-list-calendar https://github.com/PradellaNicolas/cursor-peoplehub-mcp.git
 cd cursor-peoplehub-mcp
 npm ci
 npm run build
+.\scripts\install-pampa-skill.ps1
 ```
+
+El script copia el skill Pampa a `%USERPROFILE%\.cursor\skills\`. Detalle en [docs/INSTALACION-PAMPA.md](docs/INSTALACION-PAMPA.md).
 
 `peoplehub_login` abre un **Edge con perfil aparte** (`~/.peoplehub-mcp/edge-profile`). No lee tu Edge cotidiano ni tu contraseña. Si ya hay CDP en 9222, se conecta a esa ventana.
 
