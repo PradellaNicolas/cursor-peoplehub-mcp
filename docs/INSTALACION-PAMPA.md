@@ -90,18 +90,39 @@ No commitear `.env`, `storage.json`, `edge-profile/` ni `.pampa-timereport.yaml`
 
 ## Mensaje para el equipo
 
+Pegá esto en Teams. Cada persona abre Cursor en **Agent mode** y pega solo el bloque **PROMPT**.
+
 ```text
-Time Report Pampa — repo único (rama feat/peoplehub-list-calendar)
+Time Report Pampa — instalación asistida por Cursor
+
+1. Abrí Cursor en Agent mode.
+2. Copiá y pegá el bloque "PROMPT" de abajo en el chat.
+3. Tené a mano tu número de AST de célula y el grupo (PeopleHub).
+4. Cuando se abra Edge (perfil PeopleHub), completá Microsoft SSO si pide.
+
+Guía completa en el repo: docs/INSTALACION-PAMPA.md (rama feat/peoplehub-list-calendar).
+
+--- PROMPT (copiar desde la línea siguiente) ---
+
+Instalá Time Report Pampa en esta PC siguiendo docs/INSTALACION-PAMPA.md del repo cursor-peoplehub-mcp.
 
 Repo: https://github.com/PradellaNicolas/cursor-peoplehub-mcp
-Guía: docs/INSTALACION-PAMPA.md
+Rama: feat/peoplehub-list-calendar
 
-1. git clone -b feat/peoplehub-list-calendar https://github.com/PradellaNicolas/cursor-peoplehub-mcp.git
-2. cd cursor-peoplehub-mcp; npm ci; npm run build
-3. mcp.json → scripts/launcher.mjs (tu ruta)
-4. .\scripts\install-pampa-skill.ps1
-5. plantilla-perfil.yaml → %USERPROFILE%\.pampa-timereport.yaml (tu AST)
-6. peoplehub_login
+Hacé vos todos los pasos que puedas en Agent mode:
+1) Si no tengo el repo, git clone -b feat/peoplehub-list-calendar en %USERPROFILE%\projects\cursor-peoplehub-mcp; si ya existe, git pull en esa carpeta.
+2) npm ci y npm run build en la raíz del clone.
+3) Configurá o actualizá %USERPROFILE%\.cursor\mcp.json con el servidor peoplehub apuntando a scripts\launcher.mjs (ruta absoluta del clone). No borres otros MCP.
+4) Ejecutá .\scripts\install-pampa-skill.ps1 -Force desde la raíz del repo.
+5) Si no existe %USERPROFILE%\.pampa-timereport.yaml, preguntame mi AST de célula (actividad_id) y grupo_id, y creá el perfil desde skills\pampa-timereport-diario\plantilla-perfil.yaml.
+6) peoplehub_login y verificá peoplehub_session.
+7) Probá Fase A del skill: revisar mis horas de hoy (time report Pampa).
 
-Tras git pull: npm ci; npm run build; .\scripts\install-pampa-skill.ps1 -Force
+Decime en cada paso qué hiciste. Si algo requiere mi clic en Edge o mi AST, pedilo antes de seguir.
+```
+
+### Actualizar después de un `git pull`
+
+```text
+Actualizá mi instalación Time Report Pampa: en mi clone de cursor-peoplehub-mcp (rama feat/peoplehub-list-calendar) hacé git pull, npm ci, npm run build y .\scripts\install-pampa-skill.ps1 -Force. Decime si cambió algo en skills/ o MCP.
 ```

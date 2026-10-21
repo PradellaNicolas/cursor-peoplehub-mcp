@@ -157,3 +157,5 @@ npm run build
 - Uso cotidiano: `USO-DIARIO.md`
 - Instalación del equipo: [`docs/INSTALACION-PAMPA.md`](../../docs/INSTALACION-PAMPA.md)
 - Facilitador de célula: coordinar AST correcto por persona
+
+Para instalar sin seguir pasos a mano: en Cursor **Agent mode**, pegá el bloque **PROMPT** de la sección "Mensaje para el equipo" en [`docs/INSTALACION-PAMPA.md`](../../docs/INSTALACION-PAMPA.md). El agente clona, hace `npm ci`/`build`, configura `mcp.json`, corre `install-pampa-skill.ps1` y pide AST y login en Edge cuando hace falta.
